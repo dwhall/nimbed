@@ -1,33 +1,34 @@
-import std / volatile
-
-# TODO: import pkg / core
-import core
+import std/volatile
 
 type
-  RegisterType* = uint8 | uint16 | uint32 # | uint64
-  RegisterPtr* = ptr RegisterType  # ptr uint8 | ptr uint16 | ptr uint32 | ptr uint64
+  RegisterTypedesc = uint
+  Register* = object
+    address*: RegisterTypedesc
+    resetValue*: RegisterTypedesc
+    readableBits*: RegisterTypedesc
+    writableBits*: RegisterTypedesc
 
-  RegisterAttr = enum
-    Readable,
-    Writable
-  RegisterAttrs = set[RegisterAttr]
+type
+  RCC_AHB1ENR_val* = RegisterTypedesc
+  RCC_AHB1ENR_reg* = Register
 
-  RegisterConfig[
-    TAddress: static RegisterPtr,
-    TReadWriteAttr: static RegisterAttrs,
-  ] = distinct NimbedConfig
+const RCC_AHB1ENR = RCC_AHB1ENR_reg(
+    address: 0x40023830,
+    resetValue: 0x00000000,
+    readableBits: 0x606410FF,
+    writableBits: 0x606410FF)
 
-proc initRegister*(address: static RegisterPtr, rwAttrs: static RegisterAttrs): RegisterConfig[address, rwAttrs] =
-  discard
+proc read*(reg: static RCC_AHB1ENR_reg): RCC_AHB1ENR_val {.inline.} =
+  volatileLoad(cast[ptr RCC_AHB1ENR_val](reg.address))
 
-proc load*(cfg: RegisterConfig): RegisterType =
-  cfg.TAddress.volatileLoad()
+proc write*(reg: static RCC_AHB1ENR_reg, val: RCC_AHB1ENR_val) {.inline.} =
+  volatileStore(cast[ptr RCC_AHB1ENR_val](reg.address), val)
 
-proc store*[T](cfg: RegisterConfig, val: T) =
-  cfg.TAddress.volatileStore(val)
-
+proc main =
+  var a = RCC_AHB1ENR.read()
+  a += 1
+  RCC_AHB1ENR.write(a)
+  echo a
 
 when isMainModule:
-  const PORTA = initRegister(cast[ptr uint8](0x0100), {Readable, Writable})     # Compiles, but it's verbose/ugly
-  let a = PORTA.load()
-  PORTA.store(a+1)
+  main()
